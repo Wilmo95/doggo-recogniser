@@ -1,2 +1,2 @@
 # doggo-recogniser
-Project made for the subject computational intelligence
+Project is made on computational intelligence
