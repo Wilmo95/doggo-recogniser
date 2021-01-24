@@ -2,9 +2,10 @@ import cv2
 from imutils import paths
 import imutils
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
-
+from sklearn.tree import DecisionTreeClassifier # Import Decision Tree Classifier
+from sklearn.model_selection import train_test_split # Import train_test_split function
+from sklearn import metrics
 DIR = 'archive/images/Images/'
 images = []
 imagePaths = list(paths.list_images(DIR))
@@ -70,14 +71,10 @@ features = np.array(features)
 (trainFeat, testFeat, trainLabels, testLabels) = train_test_split(
 	features, labels, test_size=0.25, random_state=42)
 
-print("[INFO] pixels matrix: {:.2f}MB".format(
-	rawImages.nbytes / (1024 * 1000.0)))
-print("[INFO] features matrix: {:.2f}MB".format(
-	features.nbytes / (1024 * 1000.0)))
-
 # train and evaluate a k-NN classifer on the raw pixel intensities
+
 print("[INFO] evaluating raw pixel accuracy...")
-model = GaussianNB()
+model = DecisionTreeClassifier()
 
 
 model.fit(trainRI, trainRL)
@@ -86,10 +83,9 @@ print("[INFO] raw pixel accuracy: {:.2f}%".format(acc * 100))
 
 
 print("[INFO] evaluating histogram accuracy...")
-model = GaussianNB()
+model = DecisionTreeClassifier()
 
 
 model.fit(trainFeat, trainLabels)
 acc = model.score(testFeat, testLabels)
 print("[INFO] histogram accuracy: {:.2f}%".format(acc * 100))
-

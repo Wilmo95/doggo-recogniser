@@ -14,7 +14,9 @@ train_ds = tf.keras.preprocessing.image_dataset_from_directory(TEMP_DIR,
                                                                subset='training',
                                                                seed=123,
                                                                image_size=(IMG_SIZE,IMG_SIZE),
-                                                               batch_size=batch_size)
+                                                               batch_size=batch_size
+                                                                )
+
 
 val_ds = tf.keras.preprocessing.image_dataset_from_directory(
     TEMP_DIR,

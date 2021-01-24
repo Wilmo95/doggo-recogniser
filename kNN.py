@@ -9,7 +9,7 @@ import cv2
 import os
 
 
-def image_to_feature_vector(image, size=(50, 50)):
+def image_to_feature_vector(image, size=(100, 100)):
 
 	return cv2.resize(image, size).flatten()
 
@@ -52,8 +52,8 @@ labels = []
 
 
 for (i, imagePath) in enumerate(imagePaths):
-	image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
-	# image = cv2.imread(imagePath)
+	# image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
+	image = cv2.imread(imagePath)
 	# cv2.imshow('image', image)
 	# cv2.waitKey(0)
 	try:
@@ -64,10 +64,10 @@ for (i, imagePath) in enumerate(imagePaths):
 		continue
 
 	pixels = image_to_feature_vector(image)
-	# hist = extract_color_histogram(image)
+	hist = extract_color_histogram(image)
 
 	rawImages.append(pixels)
-	# features.append(hist)
+	features.append(hist)
 	labels.append(label)
 
 	if i > 0 and i % 1000 == 0:
@@ -87,14 +87,12 @@ print("[INFO] features matrix: {:.2f}MB".format(
 # of the data for training and the remaining 25% for testing
 (trainRI, testRI, trainRL, testRL) = train_test_split(
 	rawImages, labels, test_size=0.25, random_state=42)
-# (trainFeat, testFeat, trainLabels, testLabels) = train_test_split(
-# 	features, labels, test_size=0.25, random_state=42)
+(trainFeat, testFeat, trainLabels, testLabels) = train_test_split(
+	features, labels, test_size=0.25, random_state=42)
 
-# train and evaluate a k-NN classifer on the raw pixel intensities
-print("[INFO] evaluating raw pixel accuracy...")
+
 model = KNeighborsClassifier(n_neighbors=args["neighbors"],
 	n_jobs=args["jobs"])
-
 
 model.fit(trainRI, trainRL)
 acc = model.score(testRI, testRL)
@@ -106,8 +104,8 @@ print("[INFO] evaluating histogram accuracy...")
 model = KNeighborsClassifier(n_neighbors=args["neighbors"],
 	n_jobs=args["jobs"])
 
-#
-# model.fit(trainFeat, trainLabels)
-# acc = model.score(testFeat, testLabels)
-# print("[INFO] histogram accuracy: {:.2f}%".format(acc * 100))
+
+model.fit(trainFeat, trainLabels)
+acc = model.score(testFeat, testLabels)
+print("[INFO] histogram accuracy: {:.2f}%".format(acc * 100))
 
