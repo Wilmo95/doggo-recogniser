@@ -1,48 +1,102 @@
-import cv2 as cv
+
 import numpy as np
+import tensorflow as tf
 import matplotlib.pyplot as plt
-#from tensorflow.keras import datasets, layers, models
-import os
-import random
-import pickle
-CATEGORIES = [name.lower() for name in os.listdir('training_images')]
+from tensorflow.keras import layers
+from tensorflow.keras.models import Sequential
 
+
+TEMP_DIR = 'archive/images/Images/'
 IMG_SIZE = 100
+batch_size = 32
+train_ds = tf.keras.preprocessing.image_dataset_from_directory(TEMP_DIR,
+                                                               validation_split=0.2,
+                                                               subset='training',
+                                                               seed=123,
+                                                               image_size=(IMG_SIZE,IMG_SIZE),
+                                                               batch_size=batch_size)
 
-training_set = []
-
-def create_training_set():
-    for category in CATEGORIES:
-        path = os.path.join('training_images', category)
-        class_num = CATEGORIES.index(category)
-        for img in os.listdir(path):
-            try:
-                img_array = cv.imread(os.path.join(path, img), cv.IMREAD_GRAYSCALE)
-                new_array = cv.resize(img_array, (IMG_SIZE, IMG_SIZE))
-                training_set.append([new_array, class_num])
-            except Exception as e:
-                print(e)
-
-create_training_set()
-random.shuffle(training_set)
-for sample in training_set[:10]:
-    print(sample[1])
-
-X = []
-y = []
-
-for features,label in training_set:
-    X.append(features)
-    y.append(label)
+val_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    TEMP_DIR,
+    validation_split=0.2,
+    subset='validation',
+    seed=123,
+    image_size=(IMG_SIZE,IMG_SIZE),
+    batch_size=batch_size
+)
 
 
-X = np.array(X).reshape(-1, IMG_SIZE, IMG_SIZE, 1) #1 na koncu oznacza 1 kolor (3 bedzie dla rgb)
+class_names = train_ds.class_names
+print(class_names)
 
-pickle_out = open('X_gray.pickle', 'wb')
-pickle.dump(X, pickle_out)
-pickle_out.close()
+plt.figure(figsize=(10,10))
+for images,labels in train_ds.take(1):
+    for i in range(9):
+        ax = plt.subplot(3,3, i + 1)
+        plt.imshow(images[i].numpy().astype('uint8'))
+        plt.title(class_names[labels[i]])
+        plt.axis('off')
+plt.show()
 
 
-pickle_out = open('y_gray.pickle', 'wb')
-pickle.dump(y, pickle_out)
-pickle_out.close()
+AUTOTUNE = tf.data.AUTOTUNE
+
+train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+normalization_layer = layers.experimental.preprocessing.Rescaling(1./255)
+normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+image_batch, labels_batch = next(iter(normalized_ds))
+first_image = image_batch[0]
+# Notice the pixels values are now in `[0,1]`.
+print(np.min(first_image), np.max(first_image))
+
+num_classes = 120
+
+model = Sequential([
+  layers.experimental.preprocessing.Rescaling(1./255, input_shape=(IMG_SIZE, IMG_SIZE, 3)),
+  layers.Conv2D(16, 3, padding='same', activation='relu'),
+  layers.MaxPooling2D(),
+  layers.Conv2D(32, 3, padding='same', activation='relu'),
+  layers.MaxPooling2D(),
+  layers.Conv2D(64, 3, padding='same', activation='relu'),
+  layers.MaxPooling2D(),
+  layers.Flatten(),
+  layers.Dense(128, activation='relu'),
+  layers.Dense(num_classes)
+])
+
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+model.summary()
+
+epochs=10
+history = model.fit(
+  train_ds,
+  validation_data=val_ds,
+  epochs=epochs
+)
+
+
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs_range = range(epochs)
+
+plt.figure(figsize=(8, 8))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, acc, label='Training Accuracy')
+plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+plt.legend(loc='lower right')
+plt.title('Training and Validation Accuracy')
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, loss, label='Training Loss')
+plt.plot(epochs_range, val_loss, label='Validation Loss')
+plt.legend(loc='upper right')
+plt.title('Training and Validation Loss')
+plt.show()
